@@ -82,16 +82,20 @@ class _LockWrapperState extends State<LockWrapper> with WidgetsBindingObserver {
     final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
     final bool lockEnabled = prefs.getBool('biometric_lock_enabled') ?? false;
 
-    if (state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
       _lastActiveTime = DateTime.now().millisecondsSinceEpoch;
-    } else if (state == AppLifecycleState.resumed && isLoggedIn && lockEnabled) {
-      final int currentTime = DateTime.now().millisecondsSinceEpoch;
-      final int inactiveDuration = currentTime - _lastActiveTime;
+    } else if (state == AppLifecycleState.resumed) {
+      if (isLoggedIn && lockEnabled) {
+        final int currentTime = DateTime.now().millisecondsSinceEpoch;
+        final int inactiveDuration = currentTime - _lastActiveTime;
 
-      // Lock if inactive for more than 30 seconds
-      if (inactiveDuration > 30000) {
-        appLockNotifier.value = true;
+        // Lock if inactive for more than 30 seconds
+        if (inactiveDuration > 30000) {
+          appLockNotifier.value = true;
+        }
       }
+      // Reset to prevent infinite loops from overlay dialogs
+      _lastActiveTime = DateTime.now().millisecondsSinceEpoch;
     }
   }
 

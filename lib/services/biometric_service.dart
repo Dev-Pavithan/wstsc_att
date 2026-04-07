@@ -2,6 +2,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class BiometricService {
   static final LocalAuthentication _auth = LocalAuthentication();
@@ -43,5 +44,7 @@ class BiometricService {
 
   static Future<void> setLockEnabled(bool enabled) async {
     await _storage.write(key: _lockEnabledKey, value: enabled.toString());
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_lockEnabledKey, enabled);
   }
 }
