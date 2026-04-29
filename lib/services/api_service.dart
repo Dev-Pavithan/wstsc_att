@@ -5,41 +5,56 @@ import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://urbanviewre.com/wstsc-backend/api';
+  static const String baseUrl = 'https://wstsc.org.au/backend/api';
 
   String get _url => baseUrl;
 
   Future<Map<String, String>> _getHeaders() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token') ?? '';
-    final deviceId = prefs.getString('device_id') ?? '';
     
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       'Authorization': 'Bearer $token',
-      'device_id': deviceId,
+      // Removed device_id from headers to bypass CORS preflight
     };
   }
 
   Future<dynamic> get(String endpoint) async {
-    final url = Uri.parse('$_url/$endpoint');
+    final prefs = await SharedPreferences.getInstance();
+    final deviceId = prefs.getString('device_id') ?? '';
+    
+    // Append device_id as query parameter to bypass CORS
+    final uri = Uri.parse('$_url/$endpoint');
+    final queryParams = Map<String, String>.from(uri.queryParameters);
+    queryParams['device_id'] = deviceId;
+    
+    final finalUrl = uri.replace(queryParameters: queryParams);
     final headers = await _getHeaders();
     
-    debugPrint('API GET: $url');
-    final response = await http.get(url, headers: headers);
+    debugPrint('API GET: $finalUrl');
+    final response = await http.get(finalUrl, headers: headers);
     debugPrint('API Response [${response.statusCode}]: ${response.body}');
     
     return _handleResponse(response);
   }
 
   Future<dynamic> post(String endpoint, Map<String, dynamic> body) async {
-    final url = Uri.parse('$_url/$endpoint');
+    final prefs = await SharedPreferences.getInstance();
+    final deviceId = prefs.getString('device_id') ?? '';
+    
+    // Append device_id as query parameter to bypass CORS
+    final uri = Uri.parse('$_url/$endpoint');
+    final queryParams = Map<String, String>.from(uri.queryParameters);
+    queryParams['device_id'] = deviceId;
+    
+    final finalUrl = uri.replace(queryParameters: queryParams);
     final headers = await _getHeaders();
     
-    debugPrint('API POST: $url');
+    debugPrint('API POST: $finalUrl');
     debugPrint('API Body: ${jsonEncode(body)}');
-    final response = await http.post(url, headers: headers, body: jsonEncode(body));
+    final response = await http.post(finalUrl, headers: headers, body: jsonEncode(body));
     debugPrint('API Response [${response.statusCode}]: ${response.body}');
     
     return _handleResponse(response);
@@ -61,15 +76,21 @@ class ApiService {
   }
 
   Future<dynamic> updateProfilePicture(XFile xFile) async {
-    final url = Uri.parse('$_url/profile/picture');
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token') ?? '';
     final deviceId = prefs.getString('device_id') ?? '';
+    
+    // Append device_id as query parameter
+    final uri = Uri.parse('$_url/profile/picture');
+    final finalUrl = uri.replace(queryParameters: {
+      ...uri.queryParameters,
+      'device_id': deviceId,
+    });
+    
+    final token = prefs.getString('auth_token') ?? '';
 
-    var request = http.MultipartRequest('POST', url);
+    var request = http.MultipartRequest('POST', finalUrl);
     request.headers.addAll({
       'Authorization': 'Bearer $token',
-      'device_id': deviceId,
       'Accept': 'application/json',
     });
 
@@ -89,7 +110,7 @@ class ApiService {
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
     
-    debugPrint('API Multipart POST: $url');
+    debugPrint('API Multipart POST: $finalUrl');
     debugPrint('API Response [${response.statusCode}]: ${response.body}');
     
     return _handleResponse(response);

@@ -37,6 +37,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _loadUserData();
     _loadPreferences();
+    globalRefreshNotifier.addListener(_loadUserData);
+  }
+
+  @override
+  void dispose() {
+    globalRefreshNotifier.removeListener(_loadUserData);
+    super.dispose();
   }
 
   Future<void> _loadPreferences() async {
@@ -443,6 +450,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 24),
             _buildSectionHeader('Security'),
+            /*
             _buildSettingTile(
               'Biometric Login',
               'Use FaceID or TouchID',
@@ -468,6 +476,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
               ),
             ),
+            */
             _buildSettingTile(
               'Change Passcode',
               'Update your numeric PIN',

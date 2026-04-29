@@ -29,6 +29,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
     // Listen for global attendance updates or tab switches
     attendanceRefreshNotifier.addListener(_onGlobalRefresh);
     dashboardIndexNotifier.addListener(_onTabSwitch);
+    globalRefreshNotifier.addListener(_onGlobalRefresh);
   }
 
   void _onGlobalRefresh() {
@@ -45,6 +46,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
   void dispose() {
     attendanceRefreshNotifier.removeListener(_onGlobalRefresh);
     dashboardIndexNotifier.removeListener(_onTabSwitch);
+    globalRefreshNotifier.removeListener(_onGlobalRefresh);
     super.dispose();
   }
 

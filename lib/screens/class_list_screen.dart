@@ -46,6 +46,7 @@ class _ClassListScreenState extends State<ClassListScreen> with SingleTickerProv
     // Listen for global attendance updates or tab switches
     attendanceRefreshNotifier.addListener(_onGlobalRefresh);
     dashboardIndexNotifier.addListener(_onTabSwitch);
+    globalRefreshNotifier.addListener(_onGlobalRefresh);
   }
 
   void _onGlobalRefresh() {
@@ -64,6 +65,7 @@ class _ClassListScreenState extends State<ClassListScreen> with SingleTickerProv
     _controller.dispose();
     attendanceRefreshNotifier.removeListener(_onGlobalRefresh);
     dashboardIndexNotifier.removeListener(_onTabSwitch);
+    globalRefreshNotifier.removeListener(_onGlobalRefresh);
     super.dispose();
   }
 
@@ -303,9 +305,7 @@ class _ClassListScreenState extends State<ClassListScreen> with SingleTickerProv
                         style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold,
                           color: isDark ? Colors.white : Colors.black87)),
                       const SizedBox(height: 4),
-                      Text('ID: ${cls.id}',
-                        style: GoogleFonts.inter(fontSize: 12,
-                          color: isDark ? Colors.white38 : Colors.black45)),
+
                     ],
                   ),
                 ),

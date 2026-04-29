@@ -33,10 +33,12 @@ class _AppLockScreenState extends State<AppLockScreen> with SingleTickerProvider
       duration: const Duration(milliseconds: 1000),
     )..repeat(reverse: true);
     
+    /*
     // Auto-authenticate on first load
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handleAuth();
     });
+    */
   }
 
   @override
@@ -46,6 +48,7 @@ class _AppLockScreenState extends State<AppLockScreen> with SingleTickerProvider
     super.dispose();
   }
 
+  /*
   Future<void> _handleAuth() async {
     if (_isAuthenticating || _isLockedOut()) return;
     
@@ -60,6 +63,8 @@ class _AppLockScreenState extends State<AppLockScreen> with SingleTickerProvider
       _incrementFailure();
     }
   }
+  */
+  void _handleAuth() {} // STUB
 
   bool _isLockedOut() {
     if (_cooldownUntil == null) return false;
@@ -182,6 +187,7 @@ class _AppLockScreenState extends State<AppLockScreen> with SingleTickerProvider
         
         const SizedBox(height: 64),
         
+        /*
         ElevatedButton.icon(
           onPressed: _isLockedOut() ? null : _handleAuth,
           icon: const Icon(LucideIcons.shieldCheck, size: 20),
@@ -195,6 +201,7 @@ class _AppLockScreenState extends State<AppLockScreen> with SingleTickerProvider
         ),
         
         const SizedBox(height: 24),
+        */
         TextButton(
           onPressed: () => setState(() => _showPinInput = true),
           child: Text('Use App PIN', style: GoogleFonts.inter(color: Colors.white60)),
@@ -234,11 +241,13 @@ class _AppLockScreenState extends State<AppLockScreen> with SingleTickerProvider
           _buildPinPad(),
           
         const SizedBox(height: 48),
+        /*
         TextButton.icon(
           onPressed: () => setState(() { _showPinInput = false; _pinBuffer = ""; }),
           icon: const Icon(LucideIcons.fingerprint, size: 16),
           label: Text('Back to Biometrics', style: GoogleFonts.inter(color: Colors.white30)),
         ),
+        */
       ],
     );
   }

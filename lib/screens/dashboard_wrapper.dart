@@ -151,7 +151,7 @@ class _DashboardWrapperState extends State<DashboardWrapper> {
               duration: const Duration(milliseconds: 300),
               padding: EdgeInsets.symmetric(
                 horizontal: isSelected ? 24 : 12, 
-                vertical: isSelected ? 14 : 8
+                vertical: isSelected ? 12 : 8
               ),
               decoration: isSelected 
                 ? BoxDecoration(
@@ -166,30 +166,12 @@ class _DashboardWrapperState extends State<DashboardWrapper> {
                     ],
                   )
                 : null,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    icon, 
-                    size: 20, 
-                    color: isSelected 
-                      ? (isDark ? Colors.black : Colors.white) 
-                      : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    label, 
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 9, 
-                      fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700, 
-                      color: isSelected 
-                        ? (isDark ? Colors.black : Colors.white) 
-                        : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)
-                    )
-                  ),
-                ],
+              child: Icon(
+                icon, 
+                size: 24, // Increased from 20 for icon-only layout
+                color: isSelected 
+                  ? (isDark ? Colors.black : Colors.white) 
+                  : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)
               ),
             ),
           ],

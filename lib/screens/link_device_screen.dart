@@ -66,7 +66,7 @@ class _LinkDeviceScreenState extends State<LinkDeviceScreen> {
 
     try {
       final deviceId = await _getDeviceId();
-      const String apiUrl = 'https://urbanviewre.com/wstsc-backend/api/link-device';
+      const String apiUrl = 'https://wstsc.org.au/backend/api/link-device';
 
       final response = await http.post(
         Uri.parse(apiUrl),

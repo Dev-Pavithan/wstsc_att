@@ -23,7 +23,7 @@ class _ForgotPasscodeScreenState extends State<ForgotPasscodeScreen> {
   int _step = 1; // 1: Enter Email, 2: Enter Code + New PIN
 
   String _getApiUrl(String endpoint) {
-    const String baseUrl = 'https://urbanviewre.com/wstsc-backend';
+    const String baseUrl = 'https://wstsc.org.au/backend';
     return '$baseUrl/api/$endpoint';
   }
 

@@ -49,12 +49,14 @@ class _LoginScreenState extends State<LoginScreen> {
       _biometricsEnabled = bioEnabled;
     });
 
+    /*
     if (linked && bioEnabled) {
       // Auto-trigger biometric on start if enabled
       Future.delayed(const Duration(milliseconds: 1000), () {
         if (mounted) _handleBiometric();
       });
     }
+    */
   }
 
   void _handleKeyPress(String key) {
@@ -105,6 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return deviceId;
   }
 
+  /*
   Future<void> _handleBiometric() async {
     final bool didAuth = await BiometricService.authenticate();
 
@@ -121,6 +124,8 @@ class _LoginScreenState extends State<LoginScreen> {
        );
     }
   }
+  */
+  void _handleBiometric() {} // STUB
 
   void _verifyPasscode() async {
     setState(() => _isLoading = true);
@@ -128,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final deviceId = await _getDeviceId();
       
-      const String apiUrl = 'https://urbanviewre.com/wstsc-backend/api/device-login';
+      const String apiUrl = 'https://wstsc.org.au/backend/api/device-login';
       final url = Uri.parse(apiUrl);
       
       final response = await http.post(
@@ -151,10 +156,12 @@ class _LoginScreenState extends State<LoginScreen> {
         final bool bioEnabled = await BiometricService.isLockEnabled();
         final bool canBio = await BiometricService.isAvailable();
 
+        /*
         if (!bioEnabled && canBio && mounted) {
           _showEnableBiometricDialog(context);
           return;
         }
+        */
         
         if (mounted) _proceedToDashboard();
       } else if (response.statusCode == 404) {
@@ -350,7 +357,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       _buildKeypadRow(['1', '2', '3']),
                       _buildKeypadRow(['4', '5', '6']),
                       _buildKeypadRow(['7', '8', '9']),
-                      _buildKeypadRow(_biometricsEnabled ? ['0', 'bio', 'del'] : ['', '0', 'del']),
+                      _buildKeypadRow(['', '0', 'del']),
                     ],
                   ),
                 ),

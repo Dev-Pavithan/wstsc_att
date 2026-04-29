@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+// import 'package:google_fonts/google_fonts.dart'; // Temporarily disabled for stability
 
 class AppTheme {
   // Dark Palette (based on screenshots)
@@ -35,25 +35,11 @@ class AppTheme {
         onSurface: darkTextPrimary,
         error: darkError,
       ),
-      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
-        displayLarge: GoogleFonts.outfit(
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-          color: darkTextPrimary,
-        ),
-        headlineMedium: GoogleFonts.outfit(
-          fontSize: 24,
-          fontWeight: FontWeight.w600,
-          color: darkTextPrimary,
-        ),
-        bodyLarge: GoogleFonts.inter(
-          fontSize: 16,
-          color: darkTextSecondary,
-        ),
-        bodySmall: GoogleFonts.inter(
-          fontSize: 12,
-          color: darkTextSecondary,
-        ),
+      textTheme: const TextTheme(
+        displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: darkTextPrimary),
+        headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: darkTextPrimary),
+        bodyLarge: TextStyle(fontSize: 16, color: darkTextSecondary),
+        bodySmall: TextStyle(fontSize: 12, color: darkTextSecondary),
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
@@ -72,7 +58,7 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: darkAccent,
           foregroundColor: darkBg,
-          textStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+          textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
@@ -101,25 +87,11 @@ class AppTheme {
         onSurface: lightTextPrimary,
         error: lightError,
       ),
-      textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme).copyWith(
-        displayLarge: GoogleFonts.outfit(
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-          color: lightTextPrimary,
-        ),
-        headlineMedium: GoogleFonts.outfit(
-          fontSize: 24,
-          fontWeight: FontWeight.w600,
-          color: lightTextPrimary,
-        ),
-        bodyLarge: GoogleFonts.inter(
-          fontSize: 16,
-          color: lightTextSecondary,
-        ),
-        bodySmall: GoogleFonts.inter(
-          fontSize: 12,
-          color: lightTextSecondary,
-        ),
+      textTheme: const TextTheme(
+        displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: lightTextPrimary),
+        headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: lightTextPrimary),
+        bodyLarge: TextStyle(fontSize: 16, color: lightTextSecondary),
+        bodySmall: TextStyle(fontSize: 12, color: lightTextSecondary),
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
@@ -139,7 +111,7 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: lightAccent,
           foregroundColor: Colors.white,
-          textStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+          textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
@@ -151,7 +123,7 @@ class AppTheme {
         prefixIconColor: lightTextSecondary,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.grey.shade200, width: 1),
+          borderSide: BorderSide(color: Color(0xFFE2E8F0), width: 1),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),

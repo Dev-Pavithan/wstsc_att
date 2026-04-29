@@ -37,6 +37,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     // Listen for global attendance updates or tab switches
     attendanceRefreshNotifier.addListener(_onGlobalRefresh);
     dashboardIndexNotifier.addListener(_onTabSwitch);
+    globalRefreshNotifier.addListener(_onGlobalRefresh);
   }
 
   void _onGlobalRefresh() {
@@ -53,6 +54,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void dispose() {
     attendanceRefreshNotifier.removeListener(_onGlobalRefresh);
     dashboardIndexNotifier.removeListener(_onTabSwitch);
+    globalRefreshNotifier.removeListener(_onGlobalRefresh);
     _searchController.dispose();
     super.dispose();
   }

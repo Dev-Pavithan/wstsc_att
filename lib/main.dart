@@ -13,18 +13,20 @@ final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
 final ValueNotifier<int> dashboardIndexNotifier = ValueNotifier(0);
 final ValueNotifier<Map<String, dynamic>?> profileNotifier = ValueNotifier(null);
 final ValueNotifier<int> attendanceRefreshNotifier = ValueNotifier(0);
+final ValueNotifier<int> globalRefreshNotifier = ValueNotifier(0);
 
 void main() async {
+  print("DEBUG: App main() starting...");
   WidgetsFlutterBinding.ensureInitialized();
+  print("DEBUG: Binding initialized");
+  
   final prefs = await SharedPreferences.getInstance();
+  print("DEBUG: SharedPreferences acquired");
   
   final bool isDarkMode = prefs.getBool('isDarkMode') ?? true;
   themeNotifier.value = isDarkMode ? ThemeMode.dark : ThemeMode.light;
 
-  // Check if initial lock is needed
-  final bool lockEnabled = prefs.getBool('biometric_lock_enabled') ?? false;
-  if (lockEnabled) appLockNotifier.value = true;
-
+  print("DEBUG: Running runApp...");
   runApp(AttendanceApp(prefs: prefs));
 }
 
@@ -43,10 +45,7 @@ class AttendanceApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: currentMode,
-          builder: (context, child) {
-            return LockWrapper(child: child!);
-          },
-          home: SplashGate(prefs: prefs),
+          home: const SplashGate(),
         );
       },
     );
@@ -85,6 +84,7 @@ class _LockWrapperState extends State<LockWrapper> with WidgetsBindingObserver {
     if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
       _lastActiveTime = DateTime.now().millisecondsSinceEpoch;
     } else if (state == AppLifecycleState.resumed) {
+      /*
       if (isLoggedIn && lockEnabled) {
         final int currentTime = DateTime.now().millisecondsSinceEpoch;
         final int inactiveDuration = currentTime - _lastActiveTime;
@@ -94,6 +94,7 @@ class _LockWrapperState extends State<LockWrapper> with WidgetsBindingObserver {
           appLockNotifier.value = true;
         }
       }
+      */
       // Reset to prevent infinite loops from overlay dialogs
       _lastActiveTime = DateTime.now().millisecondsSinceEpoch;
     }
@@ -122,8 +123,7 @@ class _LockWrapperState extends State<LockWrapper> with WidgetsBindingObserver {
 }
 
 class SplashGate extends StatefulWidget {
-  final SharedPreferences prefs;
-  const SplashGate({super.key, required this.prefs});
+  const SplashGate({super.key});
 
   @override
   State<SplashGate> createState() => _SplashGateState();
@@ -137,11 +137,14 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   void _checkStatus() async {
-    final bool isLoggedIn = widget.prefs.getBool('isLoggedIn') ?? false;
-    final bool isDeviceLinked = widget.prefs.getBool('is_device_linked') ?? false;
+    print("DEBUG: SplashGate _checkStatus starting");
+    final prefs = await SharedPreferences.getInstance();
+    final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    final bool isDeviceLinked = prefs.getBool('is_device_linked') ?? false;
     
-    // Smooth transition
-    await Future.delayed(const Duration(milliseconds: 1500)); 
+    print("DEBUG: isLoggedIn: $isLoggedIn, isDeviceLinked: $isDeviceLinked");
+    
+    await Future.delayed(const Duration(milliseconds: 500)); 
 
     if (!mounted) return;
 
@@ -193,7 +196,7 @@ class _SplashGateState extends State<SplashGate> {
             const SizedBox(height: 32),
             Text(
               'WSTSC',
-              style: GoogleFonts.outfit(
+              style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
                 color: isDark ? Colors.white : Colors.black87,
@@ -202,7 +205,7 @@ class _SplashGateState extends State<SplashGate> {
             const SizedBox(height: 12),
             Text(
               'ATTENDANCE',
-              style: GoogleFonts.inter(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 4,

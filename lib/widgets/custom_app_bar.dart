@@ -247,9 +247,15 @@ class _CustomAppBarState extends State<CustomAppBar> {
           icon: Icon(themeNotifier.value == ThemeMode.dark ? LucideIcons.moon : LucideIcons.sun, size: 20),
         ),
         IconButton(
+          onPressed: () {
+            globalRefreshNotifier.value++;
+          },
+          icon: const Icon(LucideIcons.refreshCw, size: 20),
+        ),
+        /* IconButton(
           onPressed: () => _showNotifications(context),
           icon: const Icon(LucideIcons.bell, size: 20),
-        ),
+        ), */
         ValueListenableBuilder<Map<String, dynamic>?>(
           valueListenable: profileNotifier,
           builder: (context, profile, _) {

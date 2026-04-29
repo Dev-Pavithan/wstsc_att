@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../app_theme.dart';
 import '../mock_data.dart';
 import '../services/api_service.dart';
+import '../main.dart';
 
 
 class AttendanceScreen extends StatefulWidget {
@@ -31,6 +32,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
     _animationController.forward();
     _loadInitialData();
+    globalRefreshNotifier.addListener(_loadInitialData);
   }
 
   Future<void> _loadInitialData() async {
@@ -72,6 +74,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
 
   @override
   void dispose() {
+    globalRefreshNotifier.removeListener(_loadInitialData);
     _animationController.dispose();
     _searchController.dispose();
     super.dispose();

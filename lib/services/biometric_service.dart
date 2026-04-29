@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BiometricService {
+  /*
   static final LocalAuthentication _auth = LocalAuthentication();
   static const _storage = FlutterSecureStorage();
   static const String _lockEnabledKey = 'biometric_lock_enabled';
@@ -47,4 +48,11 @@ class BiometricService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_lockEnabledKey, enabled);
   }
+  */
+
+  // STUBBED METHODS TO PREVENT COMPILATION ERRORS
+  static Future<bool> isAvailable() async => false;
+  static Future<bool> authenticate() async => false;
+  static Future<bool> isLockEnabled() async => false;
+  static Future<void> setLockEnabled(bool enabled) async {}
 }
