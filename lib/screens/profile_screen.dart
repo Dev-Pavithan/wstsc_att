@@ -8,8 +8,11 @@ import '../app_theme.dart';
 import '../main.dart';
 import '../widgets/custom_app_bar.dart';
 import 'login_screen.dart';
+import 'teacher_attendance_history_screen.dart';
+import 'student_detail_screen.dart';
 import '../services/api_service.dart';
 import '../services/biometric_service.dart';
+import '../widgets/app_effects.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -31,6 +34,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _userPhone = '';
   String? _photoUrl;
   Map<String, dynamic>? _address;
+  List<dynamic> _children = [];
+  List<dynamic> _availableRoles = [];
 
   @override
   void initState() {
@@ -60,13 +65,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (response['success']) {
         final profile = response['data']['profile'];
         profileNotifier.value = profile; // Update global notifier
+        
+        List<dynamic> allRoles = profile['all_roles'] ?? [];
+        
+        // Filter roles to keep ONLY Teacher and Parent
+        List<dynamic> relevantRoles = allRoles.where((role) {
+          String name = (role['display_name'] ?? '').toString().toLowerCase();
+          return name.contains('teacher') || name.contains('parent');
+        }).toList();
+
+        if (relevantRoles.isEmpty) {
+          _handleLogout();
+          return;
+        }
+
+        // Determine which role to display:
+        // Use the current role if it's already set and still available, otherwise try primary role, then fallback to first available
+        String role = _userRole;
+        if (role.isEmpty || !relevantRoles.any((r) => r['display_name'] == role)) {
+          String primaryDisplay = profile['primary_role']['display_name'] ?? '';
+          if (relevantRoles.any((r) => r['display_name'] == primaryDisplay)) {
+            role = primaryDisplay;
+          } else {
+            role = relevantRoles.first['display_name'];
+          }
+        }
+        
         setState(() {
           _userName = profile['full_name'] ?? profile['first_name'] ?? 'No Name';
           _userEmail = profile['email'] ?? '';
-          _userRole = profile['primary_role']['display_name'] ?? 'Teacher';
+          _userRole = role;
+          currentRoleNotifier.value = role; // Update global role notifier
+          _availableRoles = relevantRoles;
           _userPhone = profile['phone'] ?? '';
           _photoUrl = profile['photo_url'];
           _address = profile['address'];
+        });
+
+
+        _fetchChildrenIfNeeded();
+
+        setState(() {
           _isLoading = false;
         });
       }
@@ -78,6 +117,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _userEmail = prefs.getString('user_email') ?? '';
         _userRole = prefs.getString('user_role') ?? 'Teacher';
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _fetchChildrenIfNeeded() async {
+    if (_userRole.toLowerCase().contains('parent')) {
+      try {
+        final childrenResponse = await _apiService.getParentStudents();
+        if (childrenResponse['success']) {
+          setState(() {
+            _children = childrenResponse['data']['students'] ?? [];
+          });
+        }
+      } catch (e) {
+        debugPrint('Error loading children: $e');
+      }
+    } else {
+      setState(() {
+        _children = [];
       });
     }
   }
@@ -334,6 +392,183 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _handleRoleSwitch(String newValue) {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    setState(() {
+      _userRole = newValue;
+      currentRoleNotifier.value = newValue; // Update global role notifier
+      _fetchChildrenIfNeeded();
+    });
+
+    // Show success popup with auto-close
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
+        });
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkSurface : Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.darkSuccess.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(LucideIcons.checkCircle, color: AppTheme.darkSuccess, size: 40),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Profile Switched',
+                  style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'You are now viewing as ${newValue.toUpperCase()}',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showRoleSelectionSheet() {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.darkSurface : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Switch Profile',
+              style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Choose your active role for this session',
+              style: GoogleFonts.inter(
+                color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+              ),
+            ),
+            const SizedBox(height: 32),
+            ..._availableRoles.map((role) {
+              final String roleName = role['display_name'];
+              final bool isSelected = roleName == _userRole;
+              final IconData roleIcon = roleName.toLowerCase().contains('teacher') 
+                  ? LucideIcons.graduationCap 
+                  : LucideIcons.users;
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: isSelected 
+                      ? accent.withOpacity(0.1) 
+                      : (isDark ? Colors.white.withOpacity(0.03) : Colors.grey.shade50),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: isSelected ? accent.withOpacity(0.3) : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+                child: ListTile(
+                  onTap: () {
+                    Navigator.pop(context);
+                    if (!isSelected) {
+                      _handleRoleSwitch(roleName);
+                    }
+                  },
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  leading: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isSelected ? accent : (isDark ? Colors.white10 : Colors.grey.shade200),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      roleIcon, 
+                      color: isSelected ? Colors.black : (isDark ? Colors.white70 : Colors.black87),
+                      size: 24,
+                    ),
+                  ),
+                  title: Text(
+                    roleName.toUpperCase(),
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                      color: isSelected ? accent : null,
+                    ),
+                  ),
+                  subtitle: Text(
+                    isSelected ? 'Currently Active' : 'Tap to switch',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: isSelected ? accent.withOpacity(0.7) : (isDark ? Colors.white38 : Colors.black38),
+                    ),
+                  ),
+                  trailing: isSelected 
+                      ? Icon(LucideIcons.checkCircle2, color: accent, size: 24) 
+                      : Icon(LucideIcons.chevronRight, size: 18, color: Colors.grey.withOpacity(0.3)),
+                ),
+              );
+            }).toList(),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
@@ -346,7 +581,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (profile != null) {
             _userName = profile['full_name'] ?? profile['first_name'] ?? 'No Name';
             _userEmail = profile['email'] ?? '';
-            _userRole = profile['primary_role']['display_name'] ?? 'Teacher';
+            // REMOVED: _userRole = profile['primary_role']['display_name'] ?? 'Teacher'; 
             _userPhone = profile['phone'] ?? '';
             _photoUrl = profile['photo_url'];
             _address = profile['address'];
@@ -357,143 +592,208 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
           children: [
             // Profile Header Card
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: isDark ? AppTheme.darkSurface : Colors.white,
-                borderRadius: BorderRadius.circular(32),
-                border: isDark ? null : Border.all(color: Colors.grey.shade100),
-              ),
-              child: _isLoading ? const Center(child: CircularProgressIndicator()) : Column(
-                children: [
-                  Stack(
-                    alignment: Alignment.bottomRight,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.3), width: 2),
-                        ),
-                        child: CircleAvatar(
-                          radius: 50,
-                          backgroundColor: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.2),
-                          backgroundImage: _photoUrl != null ? NetworkImage('${_photoUrl!}?v=${profile?['updated_at'] ?? '1'}') : null,
-                          child: _photoUrl == null ? Text(
-                            _userName.isNotEmpty ? _userName[0].toUpperCase() : '?',
-                            style: GoogleFonts.outfit(fontSize: 36, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent),
-                          ) : null,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () => _pickAndUploadImage(),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
+            FadeInAnimation(
+              delay: const Duration(milliseconds: 100),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkSurface : Colors.white,
+                  borderRadius: BorderRadius.circular(32),
+                  border: isDark ? null : Border.all(color: Colors.grey.shade100),
+                ),
+                child: _isLoading ? const Center(child: CircularProgressIndicator()) : Column(
+                  children: [
+                    Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
                             shape: BoxShape.circle,
+                            border: Border.all(color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.3), width: 2),
                           ),
-                          child: const Icon(LucideIcons.camera, size: 16, color: Colors.black87),
+                          child: CircleAvatar(
+                            radius: 50,
+                            backgroundColor: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.2),
+                            backgroundImage: _photoUrl != null ? NetworkImage('${_photoUrl!}?v=${profile?['updated_at'] ?? '1'}') : null,
+                            child: _photoUrl == null ? Text(
+                              _userName.isNotEmpty ? _userName[0].toUpperCase() : '?',
+                              style: GoogleFonts.outfit(fontSize: 36, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent),
+                            ) : null,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Text(_userName, style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold)),
-                  Text(_userEmail, style: GoogleFonts.inter(color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.darkSuccess.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
+                        GestureDetector(
+                          onTap: () => _pickAndUploadImage(),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(LucideIcons.camera, size: 16, color: Colors.black87),
+                          ),
+                        ),
+                      ],
                     ),
-                    child: Text(_userRole, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.darkSuccess)),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+                    Text(_userName, style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold)),
+                    Text(_userEmail, style: GoogleFonts.inter(color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)),
+                    const SizedBox(height: 12),
+                    
+                    // Role Switcher / Display
+                    if (_availableRoles.length > 1)
+                      GestureDetector(
+                        onTap: _showRoleSelectionSheet,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(100),
+                            border: Border.all(color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.2)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _userRole.toLowerCase().contains('teacher') ? LucideIcons.graduationCap : LucideIcons.users,
+                                size: 16,
+                                color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _userRole.toUpperCase(),
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                  color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(LucideIcons.chevronDown, size: 14, color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.darkSuccess.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(_userRole, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.darkSuccess)),
+                      ),
+                  ],
+                ),
               ),
             ),
 
             const SizedBox(height: 32),
 
             // Settings Sections
-            _buildSectionHeader('Personal Information'),
-            _buildSettingTile(
-              'Mobile Number',
-              _userPhone.isEmpty ? 'Not set' : _userPhone,
-              LucideIcons.phone,
-              onTap: _showEditProfileSheet,
-            ),
-            _buildSettingTile(
-              'Home Address',
-              _address?['address_line1'] ?? 'Not set',
-              LucideIcons.mapPin,
-              onTap: _showEditProfileSheet,
+            FadeInAnimation(
+              delay: const Duration(milliseconds: 200),
+              child: Column(
+                children: [
+                  _buildSectionHeader('Personal Information'),
+                  _buildSettingTile(
+                    'Mobile Number',
+                    _userPhone.isEmpty ? 'Not set' : _userPhone,
+                    LucideIcons.phone,
+                    onTap: _showEditProfileSheet,
+                  ),
+                  _buildSettingTile(
+                    'Home Address',
+                    _address?['address_line1'] ?? 'Not set',
+                    LucideIcons.mapPin,
+                    onTap: _showEditProfileSheet,
+                  ),
+                ],
+              ),
             ),
 
+            const SizedBox(height: 8),
+
+            if (_userRole.toLowerCase().contains('teacher'))
+              FadeInAnimation(
+                delay: const Duration(milliseconds: 300),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 24),
+                    _buildSectionHeader('Attendance'),
+                    _buildSettingTile(
+                      'Attendance History',
+                      'View your check-in records',
+                      LucideIcons.calendar,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const TeacherAttendanceHistoryScreen()),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
             const SizedBox(height: 24),
-            _buildSectionHeader('Appearance'),
-            _buildSettingTile(
-              'Dark Mode',
-              'Adjust the app color theme',
-              LucideIcons.moon,
-              trailing: Switch(
-                value: isDark,
-                activeColor: AppTheme.darkAccent,
-                onChanged: (val) async {
-                  final prefs = await SharedPreferences.getInstance();
-                  themeNotifier.value = val ? ThemeMode.dark : ThemeMode.light;
-                  await prefs.setBool('isDarkMode', val);
-                },
+            FadeInAnimation(
+              delay: const Duration(milliseconds: 400),
+              child: Column(
+                children: [
+                  _buildSectionHeader('Appearance'),
+                  _buildSettingTile(
+                    'Dark Mode',
+                    'Adjust the app color theme',
+                    LucideIcons.moon,
+                    trailing: Switch(
+                      value: isDark,
+                      activeColor: AppTheme.darkAccent,
+                      onChanged: (val) async {
+                        final prefs = await SharedPreferences.getInstance();
+                        themeNotifier.value = val ? ThemeMode.dark : ThemeMode.light;
+                        await prefs.setBool('isDarkMode', val);
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
 
             const SizedBox(height: 24),
-            _buildSectionHeader('Security'),
-            /*
-            _buildSettingTile(
-              'Biometric Login',
-              'Use FaceID or TouchID',
-              LucideIcons.fingerprint,
-              trailing: Switch(
-                value: _biometricsEnabled,
-                activeColor: AppTheme.darkAccent,
-                onChanged: (val) async {
-                  if (val) {
-                    // VERIFY IDENTITY BEFORE ENABLING
-                    final authenticated = await BiometricService.authenticate();
-                    if (!authenticated) {
-                       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-                         const SnackBar(content: Text('Authentication failed. Cannot enable biometric login.'), behavior: SnackBarBehavior.floating),
-                       );
-                       return;
-                    }
-                  }
-
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setBool('biometric_lock_enabled', val);
-                  setState(() => _biometricsEnabled = val);
-                },
+            FadeInAnimation(
+              delay: const Duration(milliseconds: 500),
+              child: Column(
+                children: [
+                  _buildSectionHeader('Security'),
+                  _buildSettingTile(
+                    'Change Passcode',
+                    'Update your numeric PIN',
+                    LucideIcons.lock,
+                    onTap: _showChangePasscodeDialog,
+                  ),
+                ],
               ),
-            ),
-            */
-            _buildSettingTile(
-              'Change Passcode',
-              'Update your numeric PIN',
-              LucideIcons.lock,
-              onTap: _showChangePasscodeDialog,
             ),
 
             const SizedBox(height: 24),
-            _buildSectionHeader('Notifications'),
-            _buildSettingTile(
-              'Push Notifications',
-              'Stay updated with class alerts',
-              LucideIcons.bell,
-              trailing: Switch(
-                value: _notificationsEnabled,
-                activeColor: AppTheme.darkAccent,
-                onChanged: (val) => setState(() => _notificationsEnabled = val),
+            FadeInAnimation(
+              delay: const Duration(milliseconds: 600),
+              child: Column(
+                children: [
+                  _buildSectionHeader('Notifications'),
+                  _buildSettingTile(
+                    'Push Notifications',
+                    'Stay updated with class alerts',
+                    LucideIcons.bell,
+                    trailing: Switch(
+                      value: _notificationsEnabled,
+                      activeColor: AppTheme.darkAccent,
+                      onChanged: (val) => setState(() => _notificationsEnabled = val),
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -527,6 +827,127 @@ class _ProfileScreenState extends State<ProfileScreen> {
   ),
 );
 }
+
+  Widget _buildChildrenList() {
+    if (_children.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        ),
+        child: Column(
+          children: [
+            Icon(LucideIcons.userX, size: 48, color: Colors.grey.withOpacity(0.5)),
+            const SizedBox(height: 12),
+            Text(
+              'No enrolled students found',
+              style: GoogleFonts.outfit(
+                color: Colors.grey,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _children.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final child = _children[index];
+        return _buildChildCard(child);
+      },
+    );
+  }
+
+  Widget _buildChildCard(Map<String, dynamic> child) {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => StudentDetailScreen(student: child),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      child['student_name']?[0] ?? 'S',
+                      style: GoogleFonts.outfit(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        child['student_name'] ?? 'Unknown Student',
+                        style: GoogleFonts.outfit(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'ID: ${child['studid'] ?? 'N/A'} • Grade: ${child['class_grade'] ?? 'N/A'}',
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  LucideIcons.chevronRight,
+                  color: Colors.grey.withOpacity(0.5),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildSectionHeader(String title) {
     return Padding(

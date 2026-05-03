@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../app_theme.dart';
 import '../services/api_service.dart';
 import '../main.dart';
+import '../widgets/app_effects.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -66,11 +67,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
       final data = (response['data'] as List? ?? [])
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
-      setState(() { _historyDates = data; _isLoading = false; });
+      if (mounted) {
+        setState(() { _historyDates = data; _isLoading = false; });
+      }
       debugPrint('History: Loaded ${_historyDates.length} sessions');
     } catch (e) {
       debugPrint('Error Loading History: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -83,16 +86,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
       final records = (response['data'] as List? ?? [])
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
-      setState(() {
-        _detailRecords = records;
-        _detailPresent = (response['present_count'] as num?)?.toInt() ?? 0;
-        _detailTotal = (response['total'] as num?)?.toInt() ?? 0;
-        _isLoadingDetail = false;
-      });
+      if (mounted) {
+        setState(() {
+          _detailRecords = records;
+          _detailPresent = (response['present_count'] as num?)?.toInt() ?? 0;
+          _detailTotal = (response['total'] as num?)?.toInt() ?? 0;
+          _isLoadingDetail = false;
+        });
+      }
       debugPrint('History Detail: $classId on $date → $_detailPresent/$_detailTotal present');
     } catch (e) {
       debugPrint('Error Loading Detail: $e');
-      setState(() => _isLoadingDetail = false);
+      if (mounted) setState(() => _isLoadingDetail = false);
     }
   }
 
@@ -101,11 +106,92 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : _selectedSession == null
-          ? _buildHistoryList(isDark)
-          : _buildDetailView(isDark),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 500),
+        switchInCurve: Curves.easeOutQuart,
+        switchOutCurve: Curves.easeInQuad,
+        transitionBuilder: (child, animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: animation.drive(Tween<Offset>(
+                begin: const Offset(0.0, 0.05),
+                end: Offset.zero,
+              )),
+              child: child,
+            ),
+          );
+        },
+        child: _isLoading
+          ? KeyedSubtree(key: const ValueKey('loading'), child: _buildSkeleton(isDark))
+          : _selectedSession == null
+            ? KeyedSubtree(key: const ValueKey('history_list'), child: _buildHistoryList(isDark))
+            : KeyedSubtree(key: const ValueKey('detail_view'), child: _buildDetailView(isDark)),
+      ),
+    );
+  }
+
+  Widget _buildSkeleton(bool isDark) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AppSkeleton(width: 280, height: 40),
+          const SizedBox(height: 12),
+          const AppSkeleton(width: 200, height: 16),
+          const SizedBox(height: 32),
+          ...List.generate(5, (i) => const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: AppSkeleton(width: double.infinity, height: 90, borderRadius: 24),
+          )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailSkeleton(bool isDark) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: Row(
+            children: [
+              const AppSkeleton(width: 48, height: 48, borderRadius: 16),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  AppSkeleton(width: 150, height: 24),
+                  SizedBox(height: 8),
+                  AppSkeleton(width: 100, height: 16),
+                ],
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Row(
+            children: const [
+              Expanded(child: AppSkeleton(height: 60, borderRadius: 20)),
+              SizedBox(width: 12),
+              Expanded(child: AppSkeleton(height: 60, borderRadius: 20)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            itemCount: 6,
+            itemBuilder: (context, i) => const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: AppSkeleton(width: double.infinity, height: 80, borderRadius: 22),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -120,19 +206,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Attendance History',
-                  style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87, letterSpacing: -0.5)),
-                const SizedBox(height: 6),
-                Text('Tap a session to review student records.',
-                  style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500,
-                    color: isDark ? Colors.white38 : Colors.black45)),
-              ],
+          FadeInAnimation(
+            delay: const Duration(milliseconds: 100),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Attendance History',
+                    style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87, letterSpacing: -0.5)),
+                  const SizedBox(height: 6),
+                  Text('Tap a session to review student records.',
+                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.white38 : Colors.black45)),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -143,16 +232,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
                   itemCount: _historyDates.length,
-                  itemBuilder: (context, i) => TweenAnimationBuilder<double>(
-                    duration: Duration(milliseconds: 400 + (i * 100)),
-                    tween: Tween(begin: 0.0, end: 1.0),
-                    builder: (context, value, child) => Opacity(
-                      opacity: value,
-                      child: Transform.translate(
-                        offset: Offset(0, 20 * (1 - value)),
-                        child: child,
-                      ),
-                    ),
+                  itemBuilder: (context, i) => FadeInAnimation(
+                    delay: Duration(milliseconds: 200 + (i * 100)),
                     child: _sessionCard(_historyDates[i], isDark),
                   ),
                 ),
@@ -283,51 +364,54 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Column(
       children: [
         // Premium Back header
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-          decoration: BoxDecoration(
-            color: isDark ? AppTheme.darkSurface.withOpacity(0.5) : Colors.white.withOpacity(0.5),
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
-          ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: () => setState(() { _selectedSession = null; _searchQuery = ''; _searchController.clear(); }),
-                    icon: Icon(LucideIcons.arrowLeft, color: isDark ? Colors.white : Colors.black87),
-                    style: IconButton.styleFrom(
-                      backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(className,
-                          style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : Colors.black87, letterSpacing: -0.5)),
-                        Text(displayDate,
-                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500,
-                            color: isDark ? Colors.white38 : Colors.black45)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              if (!_isLoadingDetail) ...[
-                const SizedBox(height: 20),
+        FadeInAnimation(
+          delay: const Duration(milliseconds: 100),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkSurface.withOpacity(0.5) : Colors.white.withOpacity(0.5),
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+            ),
+            child: Column(
+              children: [
                 Row(
                   children: [
-                    Expanded(child: _detailStatPill('Present', '$_detailPresent', Colors.green, LucideIcons.checkCircle2, isDark)),
+                    IconButton(
+                      onPressed: () => setState(() { _selectedSession = null; _searchQuery = ''; _searchController.clear(); }),
+                      icon: Icon(LucideIcons.arrowLeft, color: isDark ? Colors.white : Colors.black87),
+                      style: IconButton.styleFrom(
+                        backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                    ),
                     const SizedBox(width: 12),
-                    Expanded(child: _detailStatPill('Absent', '${_detailTotal - _detailPresent}', Colors.red, LucideIcons.xCircle, isDark)),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(className,
+                            style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : Colors.black87, letterSpacing: -0.5)),
+                          Text(displayDate,
+                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500,
+                              color: isDark ? Colors.white38 : Colors.black45)),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
+                if (!_isLoadingDetail) ...[
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(child: _detailStatPill('Present', '$_detailPresent', Colors.green, LucideIcons.checkCircle2, isDark)),
+                      const SizedBox(width: 12),
+                      Expanded(child: _detailStatPill('Absent', '${_detailTotal - _detailPresent}', Colors.red, LucideIcons.xCircle, isDark)),
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
 
@@ -358,13 +442,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
         // List
         Expanded(
           child: _isLoadingDetail
-            ? const Center(child: CircularProgressIndicator())
+            ? _buildDetailSkeleton(isDark)
             : filtered.isEmpty
               ? _emptyState('Search returned no results.', isDark)
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
                   itemCount: filtered.length,
-                  itemBuilder: (context, i) => _recordTile(filtered[i], isDark),
+                  itemBuilder: (context, i) => FadeInAnimation(
+                    delay: Duration(milliseconds: 200 + (i * 50)),
+                    child: _recordTile(filtered[i], isDark),
+                  ),
                 ),
         ),
       ],

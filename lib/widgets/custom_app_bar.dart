@@ -7,6 +7,7 @@ import '../main.dart';
 import '../screens/dashboard_wrapper.dart';
 import '../screens/login_screen.dart';
 import '../screens/profile_screen.dart';
+import '../screens/qr_scanner_screen.dart';
 
 class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   final String? title;
@@ -238,6 +239,24 @@ class _CustomAppBarState extends State<CustomAppBar> {
           )
         : null,
       actions: [
+        ValueListenableBuilder<String>(
+          valueListenable: currentRoleNotifier,
+          builder: (context, currentRole, _) {
+            if (currentRole.toLowerCase().contains('parent')) {
+              return const SizedBox.shrink();
+            }
+            return IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const QrScannerScreen()),
+                );
+              },
+              icon: const Icon(LucideIcons.scanLine, size: 20),
+              tooltip: 'Scan Attendance QR',
+            );
+          },
+        ),
         IconButton(
           onPressed: () async {
             final prefs = await SharedPreferences.getInstance();

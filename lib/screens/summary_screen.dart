@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../app_theme.dart';
 import '../services/api_service.dart';
 import '../main.dart';
+import '../widgets/app_effects.dart';
 
 class SummaryScreen extends StatefulWidget {
   const SummaryScreen({super.key});
@@ -63,18 +64,20 @@ class _SummaryScreenState extends State<SummaryScreen> {
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
 
-      setState(() {
-        _totalStudents = (data['total_students'] as num?)?.toInt() ?? 0;
-        _activeClasses = (data['active_classes_count'] as num?)?.toInt() ?? 0;
-        _avgPercentage = (data['average_percentage'] as num?)?.toDouble() ?? 0;
-        _classBreakdown = breakdown;
-        _topStudents = top;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _totalStudents = (data['total_students'] as num?)?.toInt() ?? 0;
+          _activeClasses = (data['active_classes_count'] as num?)?.toInt() ?? 0;
+          _avgPercentage = (data['average_percentage'] as num?)?.toDouble() ?? 0;
+          _classBreakdown = breakdown;
+          _topStudents = top;
+          _isLoading = false;
+        });
+      }
       debugPrint('Summary: avg=$_avgPercentage% students=$_totalStudents classes=$_activeClasses');
     } catch (e) {
       debugPrint('Error Loading Summary: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -86,7 +89,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: _isLoading
-        ? const Center(child: CircularProgressIndicator())
+        ? _buildSkeleton(isDark)
         : RefreshIndicator(
             onRefresh: _loadSummary,
             displacement: 40,
@@ -97,123 +100,132 @@ class _SummaryScreenState extends State<SummaryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // --- Premium Header ---
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Performance Summary',
-                          style: GoogleFonts.outfit(
-                            fontSize: 32, 
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : Colors.black87,
-                            letterSpacing: -0.5,
-                          )),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Container(
-                              width: 8, height: 8,
-                              decoration: BoxDecoration(color: Colors.green, shape: BoxShape.circle, 
-                                boxShadow: [BoxShadow(color: Colors.green.withOpacity(0.5), blurRadius: 4, spreadRadius: 1)]),
-                            ),
-                            const SizedBox(width: 8),
-                            Text('Live attendance insights',
-                              style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500,
-                                color: isDark ? Colors.white38 : Colors.black45)),
-                          ],
-                        ),
-                      ],
+                  FadeInAnimation(
+                    delay: const Duration(milliseconds: 100),
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Performance Summary',
+                            style: GoogleFonts.outfit(
+                              fontSize: 32, 
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : Colors.black87,
+                              letterSpacing: -0.5,
+                            )),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Container(
+                                width: 8, height: 8,
+                                decoration: BoxDecoration(color: Colors.green, shape: BoxShape.circle, 
+                                  boxShadow: [BoxShadow(color: Colors.green.withOpacity(0.5), blurRadius: 4, spreadRadius: 1)]),
+                              ),
+                              const SizedBox(width: 8),
+                              Text('Live attendance insights',
+                                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500,
+                                  color: isDark ? Colors.white38 : Colors.black45)),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
 
                   // --- Top 3 Animated Stats ---
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        Expanded(child: _statCard('Average',
-                          '${_avgPercentage.toStringAsFixed(1)}%',
-                          LucideIcons.trendingUp, [accent, accent.withOpacity(0.7)], isDark)),
-                        const SizedBox(width: 10),
-                        Expanded(child: _statCard('Students',
-                          '$_totalStudents',
-                          LucideIcons.users, [const Color(0xFF6366F1), const Color(0xFF818CF8)], isDark)),
-                        const SizedBox(width: 10),
-                        Expanded(child: _statCard('Classes',
-                          '$_activeClasses',
-                          LucideIcons.bookOpen, [const Color(0xFFF59E0B), const Color(0xFFFBBF24)], isDark)),
-                      ],
+                  FadeInAnimation(
+                    delay: const Duration(milliseconds: 200),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          Expanded(child: _statCard('Average',
+                            '${_avgPercentage.toStringAsFixed(1)}%',
+                            LucideIcons.trendingUp, [accent, accent.withOpacity(0.7)], isDark)),
+                          const SizedBox(width: 10),
+                          Expanded(child: _statCard('Students',
+                            '$_totalStudents',
+                            LucideIcons.users, [const Color(0xFF6366F1), const Color(0xFF818CF8)], isDark)),
+                          const SizedBox(width: 10),
+                          Expanded(child: _statCard('Classes',
+                            '$_activeClasses',
+                            LucideIcons.bookOpen, [const Color(0xFFF59E0B), const Color(0xFFFBBF24)], isDark)),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
 
                   // --- Overall Hero Card with Animated Progress ---
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: isDark 
-                            ? [AppTheme.darkSurface, AppTheme.darkSurface.withOpacity(0.8)]
-                            : [Colors.white, Colors.white.withOpacity(0.9)],
-                          begin: Alignment.topLeft, end: Alignment.bottomRight),
-                        borderRadius: BorderRadius.circular(32),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10))
-                        ],
-                        border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(28),
-                        child: Row(
-                          children: [
-                            TweenAnimationBuilder<double>(
-                              duration: const Duration(milliseconds: 1500),
-                              tween: Tween(begin: 0, end: _avgPercentage / 100),
-                              curve: Curves.easeOutCirc,
-                              builder: (context, value, _) => SizedBox(
-                                width: 90, height: 90,
-                                child: Stack(
-                                  alignment: Alignment.center,
+                  FadeInAnimation(
+                    delay: const Duration(milliseconds: 300),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: isDark 
+                              ? [AppTheme.darkSurface, AppTheme.darkSurface.withOpacity(0.8)]
+                              : [Colors.white, Colors.white.withOpacity(0.9)],
+                            begin: Alignment.topLeft, end: Alignment.bottomRight),
+                          borderRadius: BorderRadius.circular(32),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10))
+                          ],
+                          border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(28),
+                          child: Row(
+                            children: [
+                              TweenAnimationBuilder<double>(
+                                duration: const Duration(milliseconds: 1500),
+                                tween: Tween(begin: 0, end: _avgPercentage / 100),
+                                curve: Curves.easeOutCirc,
+                                builder: (context, value, _) => SizedBox(
+                                  width: 90, height: 90,
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      CircularProgressIndicator(
+                                        value: value,
+                                        strokeWidth: 12,
+                                        backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+                                        color: accent,
+                                        strokeCap: StrokeCap.round,
+                                      ),
+                                      Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text('${(value * 100).toStringAsFixed(0)}%',
+                                            style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w800,
+                                              color: isDark ? Colors.white : Colors.black87)),
+                                          Text('RATE', style: GoogleFonts.inter(fontSize: 8, fontWeight: FontWeight.bold, color: isDark ? Colors.white38 : Colors.black38)),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 24),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    CircularProgressIndicator(
-                                      value: value,
-                                      strokeWidth: 12,
-                                      backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
-                                      color: accent,
-                                      strokeCap: StrokeCap.round,
-                                    ),
-                                    Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text('${(value * 100).toStringAsFixed(0)}%',
-                                          style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w800,
-                                            color: isDark ? Colors.white : Colors.black87)),
-                                        Text('RATE', style: GoogleFonts.inter(fontSize: 8, fontWeight: FontWeight.bold, color: isDark ? Colors.white38 : Colors.black38)),
-                                      ],
-                                    ),
+                                    Text('Overall Performance',
+                                      style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold,
+                                        color: isDark ? Colors.white : Colors.black87)),
+                                    const SizedBox(height: 6),
+                                    Text('Based on $_activeClasses classes and $_totalStudents students.',
+                                      style: GoogleFonts.inter(fontSize: 13, height: 1.4,
+                                        color: isDark ? Colors.white54 : Colors.black54)),
                                   ],
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 24),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Overall Performance',
-                                    style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold,
-                                      color: isDark ? Colors.white : Colors.black87)),
-                                  const SizedBox(height: 6),
-                                  Text('Based on $_activeClasses classes and $_totalStudents students.',
-                                    style: GoogleFonts.inter(fontSize: 13, height: 1.4,
-                                      color: isDark ? Colors.white54 : Colors.black54)),
-                                ],
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -222,28 +234,34 @@ class _SummaryScreenState extends State<SummaryScreen> {
 
                   // --- Class Breakdown Section ---
                   if (_classBreakdown.isNotEmpty) ...[
-                    _sectionHeader('Class Breakdown', isDark),
+                    FadeInAnimation(
+                      delay: const Duration(milliseconds: 400),
+                      child: _sectionHeader('Class Breakdown', isDark),
+                    ),
                     const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppTheme.darkSurface : Colors.white,
-                          borderRadius: BorderRadius.circular(28),
-                          border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : Border.all(color: Colors.grey.shade100),
-                        ),
-                        child: Column(
-                          children: [
-                            for (int i = 0; i < _classBreakdown.length; i++) ...[
-                              _classRow(_classBreakdown[i], isDark, accent),
-                              if (i < _classBreakdown.length - 1)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  child: Divider(height: 1, color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50),
-                                ),
+                    FadeInAnimation(
+                      delay: const Duration(milliseconds: 500),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppTheme.darkSurface : Colors.white,
+                            borderRadius: BorderRadius.circular(28),
+                            border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : Border.all(color: Colors.grey.shade100),
+                          ),
+                          child: Column(
+                            children: [
+                              for (int i = 0; i < _classBreakdown.length; i++) ...[
+                                _classRow(_classBreakdown[i], isDark, accent),
+                                if (i < _classBreakdown.length - 1)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    child: Divider(height: 1, color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50),
+                                  ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -252,14 +270,20 @@ class _SummaryScreenState extends State<SummaryScreen> {
 
                   // --- Top Students Section ---
                   if (_topStudents.isNotEmpty) ...[
-                    _sectionHeader('Top Performers', isDark),
+                    FadeInAnimation(
+                      delay: const Duration(milliseconds: 600),
+                      child: _sectionHeader('Top Performers', isDark),
+                    ),
                     const SizedBox(height: 12),
                     ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       itemCount: _topStudents.length,
-                      itemBuilder: (context, i) => _topStudentTile(i + 1, _topStudents[i], isDark, accent),
+                      itemBuilder: (context, i) => FadeInAnimation(
+                        delay: Duration(milliseconds: 700 + (i * 100)),
+                        child: _topStudentTile(i + 1, _topStudents[i], isDark, accent),
+                      ),
                     ),
                   ] else
                     _emptyState('No attendance data available.', isDark),
@@ -269,6 +293,36 @@ class _SummaryScreenState extends State<SummaryScreen> {
               ),
             ),
           ),
+    );
+  }
+
+  Widget _buildSkeleton(bool isDark) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AppSkeleton(width: 250, height: 40),
+          const SizedBox(height: 8),
+          const AppSkeleton(width: 180, height: 16),
+          const SizedBox(height: 32),
+          Row(
+            children: const [
+              Expanded(child: AppSkeleton(height: 120, borderRadius: 24)),
+              SizedBox(width: 12),
+              Expanded(child: AppSkeleton(height: 120, borderRadius: 24)),
+              SizedBox(width: 12),
+              Expanded(child: AppSkeleton(height: 120, borderRadius: 24)),
+            ],
+          ),
+          const SizedBox(height: 24),
+          const AppSkeleton(width: double.infinity, height: 140, borderRadius: 32),
+          const SizedBox(height: 32),
+          const AppSkeleton(width: 200, height: 24),
+          const SizedBox(height: 16),
+          const AppSkeleton(width: double.infinity, height: 200, borderRadius: 28),
+        ],
+      ),
     );
   }
 

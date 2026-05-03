@@ -14,6 +14,7 @@ final ValueNotifier<int> dashboardIndexNotifier = ValueNotifier(0);
 final ValueNotifier<Map<String, dynamic>?> profileNotifier = ValueNotifier(null);
 final ValueNotifier<int> attendanceRefreshNotifier = ValueNotifier(0);
 final ValueNotifier<int> globalRefreshNotifier = ValueNotifier(0);
+final ValueNotifier<String> currentRoleNotifier = ValueNotifier('Teacher');
 
 void main() async {
   print("DEBUG: App main() starting...");

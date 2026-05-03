@@ -14,6 +14,7 @@ import 'dashboard_wrapper.dart';
 import 'link_device_screen.dart';
 import 'forgot_passcode_screen.dart';
 import '../main.dart'; // Added for dashboardIndexNotifier support (needed by AppBar if we jump)
+import '../widgets/app_effects.dart';
 
 class LoginScreen extends StatefulWidget {
   final bool showInstallPrompt;
@@ -287,46 +288,59 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               children: [
                 const Spacer(flex: 2),
-                Hero(
-                  tag: 'app_logo',
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                          spreadRadius: 2,
+                FadeInAnimation(
+                  delay: const Duration(milliseconds: 100),
+                  child: Hero(
+                    tag: 'app_logo',
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          'logo.png',
+                          width: 64,
+                          height: 64,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) => Icon(LucideIcons.school, size: 48, color: AppTheme.darkAccent),
                         ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        'logo.png',
-                        width: 64,
-                        height: 64,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => Icon(LucideIcons.school, size: 48, color: AppTheme.darkAccent),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
-                Text('Verify & Continue', style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
-                const SizedBox(height: 8),
-                Text('Enter your 4-digit security PIN', style: GoogleFonts.inter(color: Colors.white54)),
+                FadeInAnimation(
+                  delay: const Duration(milliseconds: 200),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 24),
+                      Text('Verify & Continue', style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+                      const SizedBox(height: 8),
+                      Text('Enter your 4-digit security PIN', style: GoogleFonts.inter(color: Colors.white54)),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 48),
                 
                 // Passcode Dots
-                _isLoading 
-                  ? CircularProgressIndicator(color: AppTheme.darkAccent)
-                  : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(4, (index) => _buildDot(index < _passcode.length)),
-                  ),
+                FadeInAnimation(
+                  delay: const Duration(milliseconds: 300),
+                  child: _isLoading 
+                    ? CircularProgressIndicator(color: AppTheme.darkAccent)
+                    : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(4, (index) => _buildDot(index < _passcode.length)),
+                    ),
+                ),
                 
                 const Spacer(flex: 3),
                 
@@ -350,15 +364,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 12),
 
                 // Keypad
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-                  child: Column(
-                    children: [
-                      _buildKeypadRow(['1', '2', '3']),
-                      _buildKeypadRow(['4', '5', '6']),
-                      _buildKeypadRow(['7', '8', '9']),
-                      _buildKeypadRow(['', '0', 'del']),
-                    ],
+                FadeInAnimation(
+                  delay: const Duration(milliseconds: 400),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                    child: Column(
+                      children: [
+                        _buildKeypadRow(['1', '2', '3']),
+                        _buildKeypadRow(['4', '5', '6']),
+                        _buildKeypadRow(['7', '8', '9']),
+                        _buildKeypadRow(['', '0', 'del']),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
