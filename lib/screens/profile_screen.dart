@@ -175,14 +175,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final TextEditingController phoneController = TextEditingController(text: _userPhone);
     final TextEditingController line1Controller = TextEditingController(text: _address?['address_line1'] ?? '');
     final TextEditingController line2Controller = TextEditingController(text: _address?['address_line2'] ?? '');
-    final TextEditingController cityController = TextEditingController(text: _address?['city'] ?? '');
-    final TextEditingController stateController = TextEditingController(text: _address?['state'] ?? '');
-    final TextEditingController zipController = TextEditingController(text: _address?['postal_code'] ?? '');
-    final TextEditingController countryController = TextEditingController(text: _address?['country'] ?? 'Australia');
+    
+    String selectedCity = _address?['city'] ?? 'Sydney';
+    String selectedState = _address?['state'] ?? 'NSW';
+    String selectedZip = _address?['postal_code'] ?? '2000';
+    String selectedCountry = _address?['country'] ?? 'Australia';
     
     String addressType = _address?['address_type'] ?? 'home';
     bool isSamePostal = (_address?['is_same_postal_address'] ?? 'Y') == 'Y';
     bool isUpdating = false;
+
+    // Data lists for dropdowns
+    final List<String> cities = ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide', 'Canberra', 'Hobart', 'Darwin', 'Blacktown', 'Parramatta', 'Penrith', 'Liverpool', 'Kellyville', 'Seven Hills', 'Castle Hill'];
+    if (!cities.contains(selectedCity) && selectedCity.isNotEmpty) cities.add(selectedCity);
+    
+    final List<String> states = ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT'];
+    if (!states.contains(selectedState) && selectedState.isNotEmpty) states.add(selectedState);
+    
+    final List<String> zipCodes = ['2000', '2148', '2150', '2750', '2170', '3000', '4000', '5000', '6000', '7000', '0800', '2600', '2155', '2153', '2147'];
+    if (!zipCodes.contains(selectedZip) && selectedZip.isNotEmpty) zipCodes.add(selectedZip);
+    
+    final List<String> countries = ['Australia', 'India', 'Sri Lanka', 'New Zealand', 'United Kingdom', 'USA', 'Canada', 'Singapore', 'Malaysia'];
+    if (!countries.contains(selectedCountry) && selectedCountry.isNotEmpty) countries.add(selectedCountry);
 
     showModalBottomSheet(
       context: context,
@@ -244,18 +258,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 
                 Row(
                   children: [
-                    Expanded(child: _buildEditField('City', LucideIcons.building, cityController)),
+                    Expanded(
+                      child: _buildDropdownField('City', LucideIcons.building, selectedCity, cities, (val) {
+                        setModalState(() => selectedCity = val!);
+                      }),
+                    ),
                     const SizedBox(width: 12),
-                    Expanded(child: _buildEditField('State', LucideIcons.map, stateController)),
+                    Expanded(
+                      child: _buildDropdownField('State', LucideIcons.map, selectedState, states, (val) {
+                        setModalState(() => selectedState = val!);
+                      }),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 
                 Row(
                   children: [
-                    Expanded(child: _buildEditField('Postal Code', LucideIcons.hash, zipController)),
+                    Expanded(
+                      child: _buildDropdownField('Postal Code', LucideIcons.hash, selectedZip, zipCodes, (val) {
+                        setModalState(() => selectedZip = val!);
+                      }),
+                    ),
                     const SizedBox(width: 12),
-                    Expanded(child: _buildEditField('Country', LucideIcons.globe, countryController)),
+                    Expanded(
+                      child: _buildDropdownField('Country', LucideIcons.globe, selectedCountry, countries, (val) {
+                        setModalState(() => selectedCountry = val!);
+                      }),
+                    ),
                   ],
                 ),
 
@@ -277,10 +307,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         'address_type': addressType,
                         'address_line1': line1Controller.text,
                         'address_line2': line2Controller.text,
-                        'person_city': cityController.text,
-                        'person_state': stateController.text,
-                        'postal_code': zipController.text,
-                        'person_country': countryController.text,
+                        'person_city': selectedCity,
+                        'person_state': selectedState,
+                        'postal_code': selectedZip,
+                        'person_country': selectedCountry,
                         'is_same_postal_address': isSamePostal ? 'Y' : 'N',
                         'person_address_status': 'active',
                       });
@@ -300,13 +330,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     minimumSize: const Size.fromHeight(60),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: isUpdating ? const CircularProgressIndicator(color: Colors.black) : const Text('Save Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: isUpdating ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)) : const Text('Save Profile', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDropdownField(String label, IconData icon, String value, List<String> items, Function(String?) onChanged) {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: items.contains(value) ? value : (items.isNotEmpty ? items.first : null),
+          onChanged: onChanged,
+          isExpanded: true,
+          decoration: InputDecoration(
+            prefixIcon: Icon(icon, size: 18),
+            filled: true,
+            fillColor: isDark ? AppTheme.darkSurface : Colors.grey.shade100,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          ),
+          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14)))).toList(),
+        ),
+      ],
     );
   }
 

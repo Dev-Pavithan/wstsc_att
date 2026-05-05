@@ -66,9 +66,9 @@ class _SummaryScreenState extends State<SummaryScreen> {
 
       if (mounted) {
         setState(() {
-          _totalStudents = (data['total_students'] as num?)?.toInt() ?? 0;
-          _activeClasses = (data['active_classes_count'] as num?)?.toInt() ?? 0;
-          _avgPercentage = (data['average_percentage'] as num?)?.toDouble() ?? 0;
+          _totalStudents = _toInt(data['total_students']);
+          _activeClasses = _toInt(data['active_classes_count']);
+          _avgPercentage = _toDouble(data['average_percentage']);
           _classBreakdown = breakdown;
           _topStudents = top;
           _isLoading = false;
@@ -79,6 +79,20 @@ class _SummaryScreenState extends State<SummaryScreen> {
       debugPrint('Error Loading Summary: $e');
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  double _toDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
+  int _toInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 
   @override
@@ -374,9 +388,9 @@ class _SummaryScreenState extends State<SummaryScreen> {
 
   Widget _classRow(Map<String, dynamic> cls, bool isDark, Color accent) {
     final name = cls['class_name'] ?? 'Unknown';
-    final rate = (cls['attendance_rate'] as num?)?.toDouble() ?? 0.0;
-    final present = (cls['present_count'] as num?)?.toInt() ?? 0;
-    final total = (cls['total_records'] as num?)?.toInt() ?? 0;
+    final rate = _toDouble(cls['attendance_rate']);
+    final present = _toInt(cls['present_count']);
+    final total = _toInt(cls['total_records']);
     final color = rate >= 80 ? Colors.green : (rate >= 60 ? Colors.orange : Colors.red);
 
     return Column(
@@ -433,9 +447,9 @@ class _SummaryScreenState extends State<SummaryScreen> {
 
   Widget _topStudentTile(int rank, Map<String, dynamic> student, bool isDark, Color accent) {
     final name = student['name'] ?? 'Unknown';
-    final rate = (student['attendance_rate'] as num?)?.toDouble() ?? 0.0;
-    final present = (student['present_days'] as num?)?.toInt() ?? 0;
-    final total = (student['total_days'] as num?)?.toInt() ?? 0;
+    final rate = _toDouble(student['attendance_rate']);
+    final present = _toInt(student['present_days']);
+    final total = _toInt(student['total_days']);
     
     Color rankColor = rank == 1 ? Colors.amber : (rank == 2 ? const Color(0xFF94A3B8) : const Color(0xFFB45309));
     IconData rankIcon = rank == 1 ? LucideIcons.trophy : (rank == 2 ? LucideIcons.medal : LucideIcons.award);

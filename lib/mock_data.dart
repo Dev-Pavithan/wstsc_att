@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 class Student {
@@ -48,15 +49,32 @@ class Student {
   });
 
   factory Student.fromJson(Map<String, dynamic> json) {
+    // Robustly extract class name
+    String? classDisplayName;
+    final classInfo = json['class_info'];
+    if (classInfo is Map) {
+      classDisplayName = classInfo['class_name']?.toString();
+    } else if (classInfo is String && classInfo.trim().startsWith('{')) {
+      try {
+        final decoded = jsonDecode(classInfo);
+        classDisplayName = decoded['class_name']?.toString();
+      } catch (_) {}
+    }
+    classDisplayName ??= json['class_name']?.toString();
+
     // Debug print to help identify available keys in the response
     debugPrint('Student JSON keys: ${json.keys.toList()}');
 
     String? imageUrl = json['stu_image_url'] ?? json['student_image'] ?? json['stu_image'];
     
-    // If it's a relative path or just a filename, format it
-    if (imageUrl != null && !imageUrl.startsWith('http')) {
-      final String filename = imageUrl.contains('/') ? imageUrl.split('/').last : imageUrl;
-      imageUrl = 'https://wstsc.org.au/backend/api/student-image/$filename';
+    // Resolve photo URL and address potential CORS issues on Web
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      if (!imageUrl.startsWith('http') || imageUrl.contains('/backend/storage/')) {
+        final String filename = imageUrl.contains('/') ? imageUrl.split('/').last : imageUrl;
+        imageUrl = 'https://wstsc.org.au/backend/api/student-image/$filename';
+      }
+    } else {
+      imageUrl = null;
     }
 
     String? emergencyName;
@@ -75,7 +93,7 @@ class Student {
       motherTongue: json['mother_tongue'],
       school: json['current_mainstream_school'],
       mainstreamGrade: json['current_mainstream_grade']?.toString(),
-      communityGrade: json['current_com_school_enr_grade']?.toString(),
+      communityGrade: classDisplayName ?? json['current_com_school_enr_grade']?.toString(),
       asthma: json['current_asthma']?.toString(),
       majorIllness: json['current_major_illness']?.toString(),
       allergies: json['current_allergies']?.toString(),

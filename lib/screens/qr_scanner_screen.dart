@@ -12,13 +12,35 @@ class QrScannerScreen extends StatefulWidget {
   State<QrScannerScreen> createState() => _QrScannerScreenState();
 }
 
-class _QrScannerScreenState extends State<QrScannerScreen> {
+class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProviderStateMixin {
   final ApiService _apiService = ApiService();
   bool _isProcessing = false;
+  bool _showScanLine = false;
   MobileScannerController controller = MobileScannerController();
+  late AnimationController _animationController;
+  late Animation<double> _scanLineAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _scanLineAnimation = Tween<double>(begin: 0.0, end: 276.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    controller.dispose();
+    super.dispose();
+  }
 
   void _onDetect(BarcodeCapture capture) async {
-    if (_isProcessing) return;
+    if (_isProcessing || _showScanLine) return;
 
     final List<Barcode> barcodes = capture.barcodes;
     if (barcodes.isEmpty) return;
@@ -27,11 +49,23 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     if (code == null || !code.startsWith('WSTSC-ATT-')) return;
 
     setState(() {
-      _isProcessing = true;
+      _showScanLine = true;
     });
+    _animationController.repeat(reverse: true);
 
     // Pause/Stop scanner immediately
     await controller.stop();
+
+    // Trigger scan animation duration
+    await Future.delayed(const Duration(milliseconds: 1500));
+
+    if (!mounted) return;
+
+    _animationController.stop();
+    setState(() {
+      _showScanLine = false;
+      _isProcessing = true;
+    });
 
     try {
       final response = await _apiService.markTeacherAttendance(code);
@@ -257,9 +291,19 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          MobileScanner(
-            controller: controller,
-            onDetect: _onDetect,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final scanWindow = Rect.fromCenter(
+                center: Offset(constraints.maxWidth / 2, constraints.maxHeight / 2),
+                width: 280,
+                height: 280,
+              );
+              return MobileScanner(
+                scanWindow: scanWindow,
+                controller: controller,
+                onDetect: _onDetect,
+              );
+            },
           ),
           // Scanner Overlay
           Positioned.fill(
@@ -275,6 +319,41 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
               ),
             ),
           ),
+          // Scan Line Animation
+          if (_showScanLine)
+            Center(
+              child: SizedBox(
+                width: 280,
+                height: 280,
+                child: Stack(
+                  children: [
+                    AnimatedBuilder(
+                      animation: _scanLineAnimation,
+                      builder: (context, child) {
+                        return Positioned(
+                          top: _scanLineAnimation.value,
+                          left: 0,
+                          right: 0,
+                          child: Container(
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: AppTheme.lightAccent,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.lightAccent.withOpacity(0.8),
+                                  blurRadius: 10,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
           // Top Controls
           Positioned(
             top: 60,

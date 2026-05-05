@@ -497,13 +497,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               decoration: BoxDecoration(
                 color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(30),
-                image: student.imageUrl != null
-                  ? DecorationImage(image: NetworkImage(student.imageUrl!), fit: BoxFit.cover)
-                  : null,
               ),
-              child: student.imageUrl == null
-                ? Center(child: Text(student.name[0], style: GoogleFonts.outfit(fontSize: 48, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent)))
-                : null,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: student.imageUrl != null
+                  ? Image.network(
+                      student.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Center(child: Text(student.name[0], style: GoogleFonts.outfit(fontSize: 48, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent)));
+                      },
+                    )
+                  : Center(child: Text(student.name[0], style: GoogleFonts.outfit(fontSize: 48, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent))),
+              ),
             ),
             const SizedBox(height: 16),
             Text(student.name, style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold)),
@@ -628,25 +634,37 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                 decoration: BoxDecoration(
                   color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
-                  image: student.imageUrl != null
-                    ? DecorationImage(
-                        image: NetworkImage(student.imageUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
                 ),
-                child: student.imageUrl == null
-                  ? Center(
-                      child: Text(
-                        student.name.isNotEmpty ? student.name[0].toUpperCase() : '?',
-                        style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                          color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: student.imageUrl != null
+                    ? Image.network(
+                        student.imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Center(
+                            child: Text(
+                              student.name.isNotEmpty ? student.name[0].toUpperCase() : '?',
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                                color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    : Center(
+                        child: Text(
+                          student.name.isNotEmpty ? student.name[0].toUpperCase() : '?',
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                            color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+                          ),
                         ),
                       ),
-                    )
-                  : null,
+                ),
               ),
 
               const SizedBox(width: 16),

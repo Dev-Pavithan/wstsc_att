@@ -89,8 +89,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
       if (mounted) {
         setState(() {
           _detailRecords = records;
-          _detailPresent = (response['present_count'] as num?)?.toInt() ?? 0;
-          _detailTotal = (response['total'] as num?)?.toInt() ?? 0;
+          _detailPresent = _toInt(response['present_count']);
+          _detailTotal = _toInt(response['total']);
           _isLoadingDetail = false;
         });
       }
@@ -99,6 +99,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
       debugPrint('Error Loading Detail: $e');
       if (mounted) setState(() => _isLoadingDetail = false);
     }
+  }
+
+  double _toDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
+  int _toInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 
   @override
@@ -247,9 +261,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final accent = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
     final date = session['mark_date'] ?? '';
     final className = session['class_name'] ?? 'Unknown Class';
-    final present = (session['present_count'] as num?)?.toInt() ?? 0;
-    final total = (session['total_students'] as num?)?.toInt() ?? 0;
-    final pct = (session['percentage'] as num?)?.toDouble() ?? 0.0;
+    final present = _toInt(session['present_count']);
+    final total = _toInt(session['total_students']);
+    final pct = _toDouble(session['percentage']);
 
     DateTime? parsedDate;
     try { parsedDate = DateTime.parse(date); } catch (_) {}

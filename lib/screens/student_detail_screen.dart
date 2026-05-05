@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -73,10 +74,23 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     final emergencies = _studentData['emergency_contacts'] as List? ?? [];
     final firstEmergency = emergencies.isNotEmpty ? emergencies[0] : {};
 
-    // Basic Info Fallbacks
+    // Mainstream School
     final mSchool = profile['current_mainstream_school'] ?? _studentData['mainstream_school'] ?? '';
     final mGrade = profile['current_mainstream_grade'] ?? _studentData['class_grade'] ?? '';
-    final cGrade = profile['current_com_school_enr_grade'] ?? _studentData['com_school_enr_grade'] ?? '';
+    
+    // WSTSC Grade - Prioritize name from class_info
+    String? cGrade;
+    final classInfo = _studentData['class_info'];
+    if (classInfo is Map) {
+      cGrade = classInfo['class_name']?.toString();
+    } else if (classInfo is String && classInfo.trim().startsWith('{')) {
+      try {
+        final decoded = json.decode(classInfo);
+        cGrade = decoded['class_name']?.toString();
+      } catch (_) {}
+    }
+    
+    cGrade ??= profile['current_com_school_enr_grade']?.toString() ?? _studentData['com_school_enr_grade']?.toString() ?? '';
     final mTongue = profile['mother_tongue'] ?? _studentData['mother_tongue'] ?? '';
     
     // Mainstream School
@@ -182,8 +196,8 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     if (studid == null) return;
 
     final endpoints = [
-      'attendance/student/$studid',
       'attendance/student-stats/$studid',
+      'attendance/student/$studid',
       'attendance/history/student/$studid',
       'attendance/stats/student/$studid',
       'student/attendance-stats/$studid',
@@ -211,15 +225,18 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         }
 
         if (response != null && (response['success'] == true || response['status'] == true)) {
-          final data = response['data'] ?? {};
-          if (mounted) {
+          final data = response['data'];
+          
+          if (mounted && data is Map) {
             setState(() {
-              _attendancePercentage = (data['percentage'] ?? data['attendance_rate'] ?? 0).toDouble();
-              _totalDays = (data['total_sessions'] ?? data['total_days'] ?? 0).toInt();
+              _attendancePercentage = _toDouble(data['percentage'] ?? data['attendance_rate']);
+              _totalDays = _toInt(data['total_sessions'] ?? data['total_days']);
             });
+            debugPrint('Successfully fetched attendance stats from $endpoint');
+            return; // Success!
+          } else if (data is List) {
+            debugPrint('Endpoint $endpoint returned a List instead of a Map, skipping summary parsing.');
           }
-          debugPrint('Successfully fetched attendance stats from $endpoint');
-          return; // Success!
         }
       } catch (e) {
         debugPrint('Failed to fetch attendance from $endpoint: $e');
@@ -231,8 +248,8 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     final profile = _studentData['profile'] ?? {};
     if (profile['attendance_percentage'] != null && mounted) {
       setState(() {
-        _attendancePercentage = (profile['attendance_percentage'] as num).toDouble();
-        _totalDays = (profile['total_days'] as num?)?.toInt() ?? 0;
+        _attendancePercentage = _toDouble(profile['attendance_percentage']);
+        _totalDays = _toInt(profile['total_days']);
       });
       return;
     }
@@ -300,6 +317,20 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     } catch (e) {
       debugPrint('Error picking image: $e');
     }
+  }
+
+  double _toDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
+  int _toInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 
   Future<void> _saveProfile() async {
@@ -492,10 +523,10 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                             children: [
                               Expanded(child: _buildInfoField('Mainstream Grade', _mainstreamGradeController, LucideIcons.bookOpen, isDark)),
                               const SizedBox(width: 16),
-                              Expanded(child: _buildInfoField('WSTSC Grade', _comSchoolGradeController, LucideIcons.bookmark, isDark)),
+                              Expanded(child: _buildInfoField('WSTSC Grade', _comSchoolGradeController, LucideIcons.bookmark, isDark, forceDisabled: true)),
                             ],
                           ),
-                          _buildInfoField('Mother Tongue', _motherTongueController, LucideIcons.languages, isDark),
+                          _buildInfoField('Name in Community Language', _motherTongueController, LucideIcons.languages, isDark),
                         ],
                       ),
                     ),
@@ -806,7 +837,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
             ),
           ),
 
-          TextButton(
+          IconButton(
             onPressed: () {
               Navigator.push(
                 context,
@@ -818,7 +849,8 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                 ),
               );
             },
-            child: Text('View History', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: accent)),
+            icon: Icon(LucideIcons.history, color: accent),
+            tooltip: 'View History',
           ),
         ],
       ),
@@ -838,12 +870,12 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     );
   }
 
-  Widget _buildInfoField(String label, TextEditingController controller, IconData icon, bool isDark) {
+  Widget _buildInfoField(String label, TextEditingController controller, IconData icon, bool isDark, {bool forceDisabled = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
         controller: controller,
-        enabled: _isEditing,
+        enabled: _isEditing && !forceDisabled,
         style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           labelText: label,

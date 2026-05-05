@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -54,6 +55,7 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
             _students = studentList;
             _isLoading = false;
           });
+          _fetchAttendanceRates(studentList);
         }
       }
 
@@ -61,6 +63,34 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
       debugPrint('Error fetching students: $e');
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _fetchAttendanceRates(List students) async {
+    for (var student in students) {
+      final studid = student['studid']?.toString();
+      if (studid == null) continue;
+
+      try {
+        final response = await _apiService.get('attendance/student-stats/$studid');
+        if (response['success'] == true || response['status'] == true) {
+          final data = response['data'];
+          if (mounted && data is Map) {
+            setState(() {
+              student['attendance_rate'] = _toDouble(data['percentage'] ?? data['attendance_rate']);
+            });
+          }
+        }
+      } catch (e) {
+        debugPrint('Failed to fetch stats for $studid: $e');
+      }
+    }
+  }
+
+  double _toDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
   }
 
   @override
@@ -117,8 +147,8 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
 
     String? photoUrl = student['student_image'] ?? student['stu_image_url'] ?? student['stu_image'];
     
+    // Resolve photo URL and address potential CORS issues on Web
     if (photoUrl != null && photoUrl.isNotEmpty) {
-      // If it's a relative path or a direct storage link, route it through the API image endpoint
       if (!photoUrl.startsWith('http') || photoUrl.contains('/backend/storage/')) {
         final String filename = photoUrl.contains('/') ? photoUrl.split('/').last : photoUrl;
         photoUrl = 'https://wstsc.org.au/backend/api/student-image/$filename';
@@ -170,25 +200,37 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
                       decoration: BoxDecoration(
                         color: accent.withOpacity(0.1),
                         shape: BoxShape.circle,
-                        image: photoUrl != null
-                          ? DecorationImage(
-                              image: NetworkImage(photoUrl),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
                       ),
-                      child: photoUrl == null
-                        ? Center(
-                            child: Text(
-                              student['student_name']?[0] ?? 'S',
-                              style: GoogleFonts.outfit(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: accent,
+                      child: ClipOval(
+                        child: photoUrl != null
+                          ? Image.network(
+                              photoUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                debugPrint('Dashboard image load failed for $photoUrl: $error');
+                                return Center(
+                                  child: Text(
+                                    student['student_name']?[0] ?? 'S',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                      color: accent,
+                                    ),
+                                  ),
+                                );
+                              },
+                            )
+                          : Center(
+                              child: Text(
+                                student['student_name']?[0] ?? 'S',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: accent,
+                                ),
                               ),
                             ),
-                          )
-                        : null,
+                      ),
                     ),
                     if (photoUrl == null)
                       Positioned(
@@ -221,7 +263,36 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          _buildBadge(student['class_grade'] ?? 'N/A', isDark),
+                          Builder(
+                            builder: (context) {
+                              // Prioritize class_name from class_info, then top-level class_name
+                              String? displayClass;
+                              
+                              final classInfo = student['class_info'];
+                              if (classInfo is Map) {
+                                displayClass = classInfo['class_name']?.toString();
+                              } else if (classInfo is String && classInfo.trim().startsWith('{')) {
+                                try {
+                                  final decoded = json.decode(classInfo);
+                                  displayClass = decoded['class_name']?.toString();
+                                } catch (_) {}
+                              }
+                              
+                              // Fallbacks
+                              displayClass ??= student['class_name']?.toString();
+                              displayClass ??= student['class_grade']?.toString();
+                              
+                              return Row(
+                                children: [
+                                  _buildBadge(displayClass ?? 'N/A', isDark),
+                                  if (student['attendance_rate'] != null) ...[
+                                    const SizedBox(width: 8),
+                                    _buildAttendanceBadge(student['attendance_rate'], isDark),
+                                  ],
+                                ],
+                              );
+                            }
+                          ),
                           if (photoUrl == null) ...[
                             const SizedBox(width: 8),
                             Text(
@@ -242,13 +313,20 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
                           color: AppTheme.darkSuccess.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(
-                          'View Attendance History',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.darkSuccess,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(LucideIcons.history, size: 12, color: AppTheme.darkSuccess),
+                            const SizedBox(width: 6),
+                            Text(
+                              'View Attendance History',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.darkSuccess,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -277,6 +355,35 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
           fontWeight: FontWeight.bold,
           color: isDark ? Colors.white70 : Colors.black54,
         ),
+      ),
+    );
+  }
+
+  Widget _buildAttendanceBadge(dynamic rateValue, bool isDark) {
+    final double rate = _toDouble(rateValue);
+    final color = rate >= 90 ? AppTheme.darkSuccess : (rate >= 75 ? Colors.orange : Colors.red);
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.2), width: 0.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(LucideIcons.calendarCheck, size: 10, color: color),
+          const SizedBox(width: 4),
+          Text(
+            '${rate.toStringAsFixed(0)}% Attendance',
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

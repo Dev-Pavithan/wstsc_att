@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -19,6 +20,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   final ApiService _apiService = ApiService();
   List<dynamic> _students = [];
   bool _isLoading = true;
+  double _averageAttendance = 0.0;
+  bool _isStatsLoading = false;
 
   @override
   void initState() {
@@ -65,12 +68,58 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
             _students = studentList;
             _isLoading = false;
           });
+          _calculateAverageAttendance(studentList);
         }
       }
     } catch (e) {
       debugPrint('Error fetching students: $e');
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _calculateAverageAttendance(List students) async {
+    if (students.isEmpty) return;
+    if (mounted) setState(() => _isStatsLoading = true);
+
+    double totalPercentage = 0;
+    int count = 0;
+
+    for (var student in students) {
+      final studid = student['studid']?.toString();
+      if (studid == null) continue;
+
+      try {
+        // Try the primary stats endpoint
+        final response = await _apiService.get('attendance/student-stats/$studid');
+        if (response['success'] == true || response['status'] == true) {
+          final data = response['data'];
+          if (data is Map) {
+            final rate = _toDouble(data['percentage'] ?? data['attendance_rate']);
+            student['attendance_rate'] = rate;
+            totalPercentage += rate;
+            count++;
+          }
+        }
+      } catch (e) {
+        debugPrint('Failed to fetch stats for student $studid: $e');
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        if (count > 0) {
+          _averageAttendance = totalPercentage / count;
+        }
+        _isStatsLoading = false;
+      });
+    }
+  }
+
+  double _toDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
   }
 
   @override
@@ -184,7 +233,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         const SizedBox(width: 16),
         _buildStatItem(
           'Attendance',
-          '96%',
+          _isStatsLoading ? '...' : '${_averageAttendance.toStringAsFixed(0)}%',
           LucideIcons.calendarCheck,
           AppTheme.darkSuccess,
           isDark,
@@ -424,7 +473,28 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                _buildBadge(student['class_grade'] ?? 'N/A', isDark),
+                Builder(
+                  builder: (context) {
+                    // Prioritize class_name from class_info, then top-level class_name
+                    String? displayClass;
+                    
+                    final classInfo = student['class_info'];
+                    if (classInfo is Map) {
+                      displayClass = classInfo['class_name']?.toString();
+                    } else if (classInfo is String && classInfo.trim().startsWith('{')) {
+                      try {
+                        final decoded = json.decode(classInfo);
+                        displayClass = decoded['class_name']?.toString();
+                      } catch (_) {}
+                    }
+                    
+                    // Fallbacks
+                    displayClass ??= student['class_name']?.toString();
+                    displayClass ??= student['class_grade']?.toString();
+                    
+                    return _buildBadge(displayClass ?? 'N/A', isDark);
+                  }
+                ),
                 if (photoUrl == null) ...[
                   const SizedBox(height: 8),
                   Text(
@@ -459,6 +529,47 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
           color: isDark ? Colors.white70 : Colors.black54,
         ),
       ),
+    );
+  }
+
+  Widget _buildAttendanceBadge(dynamic rateValue, bool isDark) {
+    final double rate = _toDouble(rateValue);
+    final color = rate >= 90 ? AppTheme.darkSuccess : (rate >= 75 ? Colors.orange : Colors.red);
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.2), width: 0.5),
+      ),
+      child: Text(
+        '${rate.toStringAsFixed(0)}%',
+        style: GoogleFonts.inter(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAttendanceProgress(dynamic rateValue, bool isDark) {
+    final double rate = _toDouble(rateValue);
+    final color = rate >= 90 ? AppTheme.darkSuccess : (rate >= 75 ? Colors.orange : Colors.red);
+    
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(100),
+          child: LinearProgressIndicator(
+            value: rate / 100,
+            minHeight: 4,
+            backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
+      ],
     );
   }
 }
